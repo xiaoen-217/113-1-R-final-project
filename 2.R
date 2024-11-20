@@ -1,3 +1,3 @@
 library(tidyverse)
-GrowthTW <- read_csv("growth_tw.csv")
-glimpse(GrowthTW)
+gs <- read_csv("gp_p_01.csv")
+glimpse(gs)
