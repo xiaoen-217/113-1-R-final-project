@@ -1,0 +1,3 @@
+library(tidyverse)
+弱勢兒童及少年扶助概況 <- read_csv("弱勢兒童及少年扶助概況112年.csv")
+glimpse(弱勢兒童及少年扶助概況)
