@@ -63,10 +63,11 @@ ui <- fluidPage(
     sidebarPanel(
       checkboxGroupInput(
         inputId = "selected_items",
-        label = "選擇要展示的項目：",
+        label = "選擇要展示的項目（最多12個）：",
         choices = unique(budget_long$項目),
-        selected = unique(budget_long$項目)  # 預設全選
-      )
+        selected = NULL  # 預設不選擇任何項目
+      ),
+      textOutput("warning_text")  # 顯示警告文字
     ),
     
     mainPanel(
@@ -76,24 +77,45 @@ ui <- fluidPage(
 )
 
 # 定義 Server
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  # 限制選取的項目數量
+  observeEvent(input$selected_items, {
+    if (length(input$selected_items) > 12) {
+      updateCheckboxGroupInput(
+        session = session,
+        inputId = "selected_items",
+        selected = head(input$selected_items, 12)  # 保留前 12 個選項
+      )
+    }
+  })
+  
+  # 顯示警告訊息
+  output$warning_text <- renderText({
+    if (length(input$selected_items) > 12) {
+      "警告：最多只能選擇12個項目，已自動保留前12個選項！"
+    } else if (is.null(input$selected_items) || length(input$selected_items) == 0) {
+      "請選擇至少一個項目以顯示圖表。"
+    } else {
+      NULL
+    }
+  })
+  
+  # 繪製圖表
   output$budget_plot <- renderPlot({
-    # 確保輸入有效
     if (is.null(input$selected_items) || length(input$selected_items) == 0) {
       return(NULL)  # 如果未選擇項目，不顯示圖表
     }
     
-    # 根據使用者選擇篩選數據
     filtered_data <- budget_long %>%
       filter(項目 %in% input$selected_items)
     
-    # 繪製柱狀圖，將X軸和Y軸對調，並確保每個金額分開顯示
     ggplot(filtered_data, aes(x = 年度, y = 金額, fill = 年度)) +
-      geom_col(position = position_dodge(width = 0.8), width = 0.7) +  # 使用 position_dodge 進行分開
+      geom_col(position = position_dodge(width = 0.8), width = 0.7) +
       geom_text(aes(label = scales::comma(金額)), 
-                position = position_dodge(width = 0.8, preserve = "single"),  # 防止標籤疊加
-                size = 2, vjust = -0.3) +  # 調整文字位置，改為垂直放置
-      facet_wrap(~ 項目, scales = "free_y") +  # 使用 facet_wrap 把每個項目放到單獨的面板
+                position = position_dodge(width = 0.8, preserve = "single"), 
+                size = 2.5, vjust = -0.3, hjust = -0.0025) +  # 調整標籤位置
+      facet_wrap(~ 項目, scales = "free_y") +
       labs(
         title = "年度預算比較",
         x = "年度",
@@ -102,11 +124,14 @@ server <- function(input, output) {
       theme_minimal() +
       theme(
         legend.position = "top",
-        axis.text.x = element_text(size = 10),  # 增加x軸文字大小
-        axis.text.y = element_text(size = 10),  # 增加y軸文字大小
-        plot.margin = margin(1, 1, 1, 1, "cm")  # 增加邊距
+        axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        plot.margin = margin(1, 1, 1, 1, "cm")
       ) +
-      scale_y_continuous(labels = label_comma())  # 格式化金額數字
+      scale_y_continuous(
+        labels = label_comma(),
+        expand = expansion(mult = c(0, 0.2))  # 增加上方空間，避免文字擠出
+      )
   })
 }
 
